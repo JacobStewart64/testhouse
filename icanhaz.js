@@ -23,7 +23,7 @@ comparator((expected, actual) => {              //pass your comparator function
     return expected === actual;                 //for use in this test
 });
 
-test(() => {                                      //pass your test function to test
+test(async () => {                                      //pass your test function to test
     const file = fs.readFileSync('./hello.html');
     actual('A Hello World Test', file.toString());//make a call to actual in your test code
 });                                               //to pass it your test result
@@ -39,7 +39,7 @@ comparator(() => {
         return true;
 });
 
-test(() => {
+test(async () => {
     actual("Read File:", "<fuck>&<fuck>");
 });
 
@@ -53,7 +53,7 @@ comparator((expected, actual) => {
     return expected === actual;
 });
     
-test(() => {
+test(async () => {
     fs.writeFile('./dirredfiles/hello.html', 'I wrote this.', function(err) {
         if (err) return console.log(err);
         fs.readFile('./dirredfiles/hello.html', 'utf8', function(err, data) {
@@ -74,7 +74,7 @@ for (let i = 0; i < 100; i++) {
         return expected !== actual;
     });
         
-    test(() => {
+    test(async () => {
         fs.writeFile('./dirredfiles/hello'+i+'.html', 'I wrote this.', function(err) {
             if (err) return console.log(err);
             fs.readFile('./dirredfiles/hello'+i+'.html', 'utf8', function(err, data) {
@@ -95,7 +95,7 @@ comparator((expected, actual) => {
     return expected == actual;
 });
 
-test(() => {
+test(async () => {
     actual("Guess about truthiness", "2");
 });
 
@@ -106,8 +106,8 @@ thouse.setTestsZeroBased();             //default is 1 based
 thouse.setTestNumberPadString('+~+~');  //default is 0
 thouse.setTestNamePadString('+~+~');    //default is tilde
 
-//set tests to run async
-// to do
+//you can declare you test functions async if you want
+//them to be!
 
 //call runtests and that's it!
 thouse.runtests();

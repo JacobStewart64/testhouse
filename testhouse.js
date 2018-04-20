@@ -146,7 +146,7 @@ class testhouse {
                 return this.testmap[test].hasrun;
             });
             if (!good) {
-                setTimeout(this.stalltillgood.bind(this, cb), 15);
+                setTimeout(this.stalltillgood.bind(this, cb), 5);
             }
             else {
                 cb();

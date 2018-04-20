@@ -6,8 +6,6 @@ Maybe it will grow into big super tester one day!
 
 To Do:
 
-Make option to run tests async
-
 Concurrent calls to actual() may cause out of order logs
 ascertain whether that happens and fix it with promises or something
 Now you can try running the async tests for me and see if your logs
