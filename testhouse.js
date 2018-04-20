@@ -106,8 +106,21 @@ class testhouse {
                 }
                 console.log(this.currentColors(result)+('DESC '+this.testmap[testname].doc.slice(0, 66)+elipsis).padEnd(74, ' '));
                 console.log(('EXPECTED: '+this.testmap[testname].expect+' ACTUAL: '+actual).padEnd(74, ' '));
-            }     
+            }
+            
+            this.testmap[testname].hasrun = true;
         }
+
+        this.runtests = () => {
+            Object.keys(this.testmap).forEach((test) => {
+                performance.mark(test)
+                this.testmap[test].testfunc();
+            });
+
+            this.stalltillgood(() => {
+                this.finallog();
+            });
+        };
 
         this.finallog = () => {
             console.log(
@@ -123,8 +136,25 @@ class testhouse {
                 expect: this.expect,
                 doc: this.doc,
                 compare: this.compare,
-                testfunc: this.testfunc
+                testfunc: this.testfunc,
+                hasrun: false
             };
+        }
+
+        this.stalltillgood = (cb) => {
+            const good = Object.keys(this.testmap).every((test) => {
+                return this.testmap[test].hasrun;
+            });
+            if (!good) {
+                setTimeout(this.stalltillgood.bind(this, cb), 15);
+            }
+            else {
+                cb();
+            }
+        }
+
+        this.passorfail = (bool) => {
+            return bool ? 'PASSED' : 'FAILED';
         }
 
         this.currentColors = (bool) => {
@@ -135,29 +165,9 @@ class testhouse {
             return this.numfail ? BADCOLOR : GOODCOLOR;
         }
 
-        this.passorfail = (bool) => {
-            return bool ? 'PASSED' : 'FAILED';
-        }
-
         this.setTestsZeroBased = () => {
             this.onebased = 0;
         }
-
-        this.stalltillgood = (cb) => {
-            if (this.numwaiting) {
-                setTimeout(this.stalltillgood.bind(this, cb), 15);
-            }
-            else {
-                cb();
-            }
-        }
-
-        this.runtests = () => {
-            Object.keys(this.testmap).forEach((test) => {
-                performance.mark(test)
-                this.testmap[test].testfunc();
-            });
-        };
 
         this.setTestNameWidth = (num) => {
             this.testnamewidth = num;
