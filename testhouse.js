@@ -1,42 +1,138 @@
+const fs = require('fs');
+const { performance } = require('perf_hooks');
+
+const BADCOLOR = "\x1b[41m\x1b[33m";
+const GOODCOLOR = "\x1b[42m\x1b[34m";
+const RESETCOLOR = "\x1b[37m\x1b[40m";
+const TIMECOLOR = "\x1b[45m\x1b[36m";
+
 class testhouse {
     constructor() {
         this.testmap = {};
         this.numfail = 0;
         this.numpass = 0;
         this.expect = undefined;
-        this.BADCOLOR = "\x1b[41m\x1b[33m";
-        this.GOODCOLOR = "\x1b[42m\x1b[34m";
-        this.RESETCOLOR = "\x1b[37m\x1b[40m";
         this.testnamewidth = 29;
         this.maxtestdigits = 6;
         this.onebased = 1;
         this.testnumpadchar = '0';
         this.testnamepadchar = '~';
+        this.numwaiting = 0;
+        this.turns = [
+            'expected', 
+            'testinfo', 
+            'comparator',
+            'test'
+        ];
+        this.whoseturn = 0;
+        this.name = undefined;
+        this.doc = undefined;
+        this.compare = undefined;
+        this.testfunc = undefined;
+
+        this.tellThemWhoseTurnItIs = (whoseturn, outofturn) => {
+            throw `ERROR - CALLING FUNCTIONS OUT OF TURN\nYou tried calling ${this.turns[outofturn]} out of turn, it's ${this.turns[whoseturn]}'s turn!`;
+        };
 
         this.expected = (val) => {
             if (val) {
+                if (this.whoseturn !== 0) {
+                    return this.tellThemWhoseTurnItIs(this.whoseturn, 0);
+                }
                 this.expect = val;
+                this.whoseturn++;
                 return undefined;
             }
             return this.expect;
         };
 
-        this.test = (name, bool) => {
-            this.testmap[name] = bool;
-            if (bool) {
-                this.numpass++;
-                return;
+        this.testinfo = (name, doc) => {
+            if (this.whoseturn !== 1) {
+                return this.tellThemWhoseTurnItIs(this.whoseturn, 1);
             }
-            this.numfail++;
+            this.name = name;
+            this.doc = doc;
+            this.whoseturn++;
+        }
+
+        this.comparator = (cb) => {
+            if (this.whoseturn !== 2) {
+                return this.tellThemWhoseTurnItIs(this.whoseturn, 2);
+            }
+            this.compare = cb;
+            this.whoseturn++;
+        }
+
+        this.test = (cb) => {
+            if (this.whoseturn !== 3) {
+                return this.tellThemWhoseTurnItIs(this.whoseturn, 3);
+            }
+            this.testfunc = cb;
+            this.addcurrenttest();
+            this.whoseturn = 0;
             return;
         };
 
-        this.currentColors = (test) => {
-            return this.testmap[test] ? this.GOODCOLOR : this.BADCOLOR;
+        this.actual = (testname, actual) => {
+            performance.mark(testname+'end');
+            const testnameend = testname+'end';
+            const perftablename = `${testname} to ${testnameend}`;
+            performance.measure(perftablename, testname, testnameend);
+            const benchmark = performance.getEntriesByName(perftablename)[0].duration;
+
+            const result = this.testmap[testname].compare(this.testmap[testname].expect, actual);
+
+            if (result) {
+                this.numpass++;
+            } else {
+                this.numfail++;
+            }
+
+            console.log(
+                this.currentColors(result)
+                +'TEST '
+                +(this.onebased++ +':')
+                .padStart(this.maxtestdigits, this.testnumpadchar),
+                testname.padEnd(this.testnamewidth, this.testnamepadchar),
+                this.passorfail(result),
+                TIMECOLOR+
+                (benchmark.toString().padEnd(8, '0')+'ms').padStart(13)
+            );
+
+            if (!result) {
+                let elipsis = "";
+                if (this.testmap[testname].doc.length > 66) {
+                    elipsis = "...";
+                }
+                console.log(this.currentColors(result)+('DESC '+this.testmap[testname].doc.slice(0, 66)+elipsis).padEnd(74, ' '));
+                console.log(('EXPECTED: '+this.testmap[testname].expect+' ACTUAL: '+actual).padEnd(74, ' '));
+            }     
+        }
+
+        this.finallog = () => {
+            console.log(
+                this.lastColors()+this.numpass+'/'+(this.numpass+this.numfail),
+                'passed '+TIMECOLOR+' Tests finished '+process.uptime()+'s'+RESETCOLOR);
+        }
+
+        this.addcurrenttest = () => {
+            if (this.testmap[this.name]) {
+                throw 'ERROR - DUPLICATE TEST NAMES! THEY MUST BE UNIQUE!';
+            }
+            this.testmap[this.name] = {
+                expect: this.expect,
+                doc: this.doc,
+                compare: this.compare,
+                testfunc: this.testfunc
+            };
+        }
+
+        this.currentColors = (bool) => {
+            return  bool ? GOODCOLOR : BADCOLOR;
         }
 
         this.lastColors = () => {
-            return this.numfail ? this.BADCOLOR : this.GOODCOLOR;
+            return this.numfail ? BADCOLOR : GOODCOLOR;
         }
 
         this.passorfail = (bool) => {
@@ -47,20 +143,20 @@ class testhouse {
             this.onebased = 0;
         }
 
-        this.logtests = () => {
-            Object.keys(this.testmap).forEach((test, i) => {
-                //log for each test
-                console.log(
-                    this.currentColors(test)+'TEST '+((i+this.onebased)+':').padStart(this.maxtestdigits,
-                    this.testnumpadchar),
-                    test.padEnd(this.testnamewidth,
-                    this.testnamepadchar),
-                    this.passorfail(this.testmap[test]));
+        this.stalltillgood = (cb) => {
+            if (this.numwaiting) {
+                setTimeout(this.stalltillgood.bind(this, cb), 15);
+            }
+            else {
+                cb();
+            }
+        }
+
+        this.runtests = () => {
+            Object.keys(this.testmap).forEach((test) => {
+                performance.mark(test)
+                this.testmap[test].testfunc();
             });
-            //final log!
-            console.log(
-                this.lastColors()+this.numpass+'/'+(this.numpass+this.numfail),
-                'passed'+this.RESETCOLOR);
         };
 
         this.setTestNameWidth = (num) => {

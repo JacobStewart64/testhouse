@@ -1,29 +1,91 @@
 const fs = require('fs');
 const thouse = require('./testhouse.js');
-const test = thouse.test;
 const expected = thouse.expected;
+const testinfo = thouse.testinfo;
+const comparator = thouse.comparator;
+const test = thouse.test;
+const actual = thouse.actual;
+
+/* When you call expected, you are setting up a new test
+ * You must call testinfo next and give info about it
+ * Then pass your comparator function to comparator()
+ * Then write your test code and pass your result to
+ * actual(). You can then give a new value to expected
+ * which sets up the next test. Every misuse of the API
+ * in regards to order of calls throws an error.
+ */
+
+expected('<fuck>&<fuck>');
+testinfo('A Hello World Test',                 //the name of the test [MUST PASS TO ACTUAL AS WELL]
+     'This is the hello world test doc lol');   //the doc
+
+comparator((expected, actual) => {              //pass your comparator function
+    return expected === actual;                 //for use in this test
+});
+
+test(() => {                                      //pass your test function to test
+    const file = fs.readFileSync('./hello.html');
+    actual('A Hello World Test', file.toString());//make a call to actual in your test code
+});                                               //to pass it your test result
+
+//write more tests with the same sequence of commands
 
 //read in a file
 expected("<fuck>&<fuck>");
-const file = fs.readFileSync('./hello.html');
-test("Read File:", file.toString() === expected());
+testinfo("Read File:",
+    "Read in from a file and check to see if the data arrives correctly");
+
+comparator(() => {
+        return true;
+});
+
+test(() => {
+    actual("Read File:", "<fuck>&<fuck>");
+});
+
 
 //write a file then read it
 expected('I wrote this.');
-fs.writeFileSync('./dirredfiles/hello.html', expected());
-const ourfile = fs.readFileSync('./dirredfiles/hello.html');
-test("Write & Read File:", ourfile.toString() === expected());
+testinfo("Write & Read File:",
+    "Write a string to a file and check and see if we get the same string on the way out");
+
+comparator((expected, actual) => {
+    return expected === actual;
+});
+    
+test(() => {
+    fs.writeFile('./dirredfiles/hello.html', 'I wrote this.', function(err) {
+        if (err) return console.log(err);
+        fs.readFile('./dirredfiles/hello.html', 'utf8', function(err, data) {
+            if (err) return console.log(err);
+            actual("Write & Read File:", data.toString()); //a common problem for me using the api is forgetting to pass/passing improper test name
+        });
+    });
+});
+
 
 //guess about stuff
 expected(1);
-test("Guess about truthiness", '1' == expected());
+testinfo("Guess about truthiness",
+    "Compare String '1' to Number 1");
 
-//configure logs
+comparator((expected, actual) => {
+    return expected == actual;
+});
+
+test(() => {
+    actual("Guess about truthiness", "2");
+});
+
+//set your logging and other options
 thouse.setTestDigitsWidth(10);          //default is 6
 thouse.setTestNameWidth(50);            //default is 29
 thouse.setTestsZeroBased();             //default is 1 based
 thouse.setTestNumberPadString('+~+~');  //default is 0
 thouse.setTestNamePadString('+~+~');    //default is tilde
 
-//produce nice logs for your tests
-thouse.logtests();
+//set tests to run async
+// to do
+
+//call runtests and that's it!
+thouse.runtests();
