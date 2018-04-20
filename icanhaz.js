@@ -64,6 +64,28 @@ test(() => {
 });
 
 
+//test of concurrent reads and writes
+for (let i = 0; i < 100; i++) {
+    expected('I wrote this.');
+    testinfo("TestAsyncRW"+i,
+        "Write a string to a file and check and see if we get the same string on the way out");
+
+    comparator((expected, actual) => {
+        return expected !== actual;
+    });
+        
+    test(() => {
+        fs.writeFile('./dirredfiles/hello'+i+'.html', 'I wrote this.', function(err) {
+            if (err) return console.log(err);
+            fs.readFile('./dirredfiles/hello'+i+'.html', 'utf8', function(err, data) {
+                if (err) return console.log(err);
+                actual("TestAsyncRW"+i, data.toString()); //a common problem for me using the api is forgetting to pass/passing improper test name
+            });
+        });
+    });
+}
+
+
 //guess about stuff
 expected(1);
 testinfo("Guess about truthiness",
