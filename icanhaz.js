@@ -5,6 +5,7 @@ const testinfo = thouse.testinfo;
 const comparator = thouse.comparator;
 const test = thouse.test;
 const actual = thouse.actual;
+const cmp = thouse.getCmpFuncs();
 
 /* When you call expected, you are setting up a new test
  * You must call testinfo next and give info about it
@@ -15,16 +16,37 @@ const actual = thouse.actual;
  * in regards to order of calls throws an error.
  */
 
-expected('<fuck>&<fuck>');
-testinfo('A Hello World Test',                 //the name of the test [MUST PASS TO ACTUAL AS WELL]
-     'This is the hello world test doc lol');   //the doc
+/*
+//I need testshould() where you write "it should do this"
+//I need to make it easy to write tests for the same "unit"
+//my logs need work
+//my tests are like 30% longer to write but it's so simple
+//and flexible... idk, I really like mine and am going
+//to use mine lol
 
-comparator((expected, actual) => {              //pass your comparator function
-    return expected === actual;                 //for use in this test
+testsuitename("Lambda School Precourse Assessment");
+testname('helloWorld');
+testshould('Should return a string');
+expect("string");
+
+comparator((expected, actual) => {
+    return expected === actual;
 });
 
-test(async () => {                                      //pass your test function to test
-    const file = fs.readFileSync('./hello.html');
+test(() => {
+    actual(typeof helloWorld());
+});
+*/
+
+expected('<fuck>&<fuck>');
+/* */testinfo(
+    'A Hello World Test',                    //the name of the test [MUST PASS TO ACTUAL AS WELL]
+     'This is the hello world test doc lol');
+/*
+testinfo(*/     //the doc
+comparator(cmp.equals);                           //you can use the pre-built compare functions or your own
+test(() => {                                      //pass your test function to test
+    const file = fs.readFileSync('./hello.htm');
     actual('A Hello World Test', file.toString());//make a call to actual in your test code
 });                                               //to pass it your test result
 

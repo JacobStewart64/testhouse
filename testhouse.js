@@ -5,39 +5,155 @@ const BADCOLOR = "\x1b[41m\x1b[33m";
 const GOODCOLOR = "\x1b[42m\x1b[34m";
 const RESETCOLOR = "\x1b[37m\x1b[40m";
 const TIMECOLOR = "\x1b[45m\x1b[36m";
+const turns = [
+    'testinfo', 
+    'expected', 
+    'comparator',
+    'test'
+];
+let LAZYINIT = true;
+let testnamewidth = 29;
+let maxtestdigits = 6;
+let onebased = 1;
+let testnumpadchar = '0';
+let testnamepadchar = '~';
+let numpass = 0;
+let numfail = 0;
+let whoseturn = 0;
+let testdata = {};
 
-class testhouse {
+removeComments = (datastr) => {
+    //to do
+}
+
+addLineNumsToTestMap = (testmap, code) => {
+    //to do
+}
+
+getTestNameFromLineNum = (testmap, linenum) => {
+    //to do
+}
+
+resolveException = (testmap, data, linenum) => {
+    const codewithoutcomments = removeComments(data.toString()); //preserves '\n'
+    addLineNumsToTestMap(testmap, codewithoutcomments);
+    const testname = getTestNameFromLineNum(testmap, linenum);
+    console.log(TIMECOLOR+testname+RESETCOLOR);
+    actual(testname, undefined);
+}
+
+finallog = () => {
+    console.log(
+        this.lastColors()+this.numpass+'/'+(this.numpass+this.numfail),
+        'passed '+TIMECOLOR+' Tests finished '+process.uptime()+'s'+RESETCOLOR);
+}
+
+addcurrenttest = () => {
+    if (this.testmap[this.name]) {
+        throw 'ERROR - DUPLICATE TEST NAMES! THEY MUST BE UNIQUE!';
+    }
+    this.testmap[this.name] = {
+        expect: this.expect,
+        doc: this.doc,
+        compare: this.compare,
+        testfunc: this.testfunc,
+        hasrun: false,
+        err: undefined
+    };
+}
+
+stalltillgood = (cb) => {
+    const good = this.statictests.every((test) => {
+        return this.testmap[test].hasrun;
+    });
+    if (!good) {
+        setTimeout(this.stalltillgood.bind(this, cb), 5);
+    }
+    else {
+        cb();
+    }
+}
+
+passorfail = (bool) => {
+    return bool ? 'PASSED' : 'FAILED';
+}
+
+currentColors = (bool) => {
+    return  bool ? GOODCOLOR : BADCOLOR;
+}
+
+lastColors = () => {
+    return this.numfail ? BADCOLOR : GOODCOLOR;
+}
+
+setTestsZeroBased = () => {
+    this.onebased = 0;
+}
+
+setTestNameWidth = (num) => {
+    this.testnamewidth = num;
+}
+
+setTestDigitsWidth = (num) => {
+    this.maxtestdigits = num;
+}
+
+setTestNumberPadString = (char) => {
+    this.testnumpadchar = char;
+}
+
+setTestNamePadString = (char) => {
+    this.testnamepadchar = char;
+}
+
+class cmpfuncs {
     constructor() {
-        this.testmap = {};
-        this.numfail = 0;
-        this.numpass = 0;
-        this.expect = undefined;
-        this.testnamewidth = 29;
-        this.maxtestdigits = 6;
-        this.onebased = 1;
-        this.testnumpadchar = '0';
-        this.testnamepadchar = '~';
-        this.numwaiting = 0;
-        this.turns = [
-            'expected', 
-            'testinfo', 
-            'comparator',
-            'test'
-        ];
-        this.whoseturn = 0;
-        this.name = undefined;
-        this.doc = undefined;
-        this.compare = undefined;
-        this.testfunc = undefined;
+        this.equals = (expected, actual) => {
+            return expected === actual;
+        }    
+        this.fuzzyequals = (expected, actual) => {
+            return expected == actual;
+        }        
+        this.notequals = (expected, actual) => {
+            return expected !== actual;
+        }        
+        this.fuzzynotequals = (expected, actual) => {
+            return expected != actual;
+        }        
+        this.lessthan = (expected, actual) => {
+            return expected < actual;
+        }        
+        this.lessthanequals = (expected, actual) => {
+            return expected <= actual;
+        }        
+        this.greaterthan = (expected, actual) => {
+            return expected > actual;
+        }        
+        this.greaterthanequals = (expected, actual) => {
+            return expected >= actual;
+        }
+    }
+};  
 
-        this.tellThemWhoseTurnItIs = (whoseturn, outofturn) => {
-            throw `ERROR - CALLING FUNCTIONS OUT OF TURN\nYou tried calling ${this.turns[outofturn]} out of turn, it's ${this.turns[whoseturn]}'s turn!`;
-        };
+class test {
+    constructor(tsuitename) {
+        testhousedata[tsuitename].testmap = {};
+        testhousedata[tsuitename].numfail = 0;
+        testhousedata[tsuitename].numpass = 0;
+
+        this.describe = (name) => {
+            if (this.whoseturn !== 0) {
+                return this.tellThemWhoseTurnItIs(this.whoseturn, 0);
+            }
+            testhousedata[tsuitename].name = name;
+            this.doc = doc;
+            this.whoseturn++;
+        }
 
         this.expected = (val) => {
             if (val) {
-                if (this.whoseturn !== 0) {
-                    return this.tellThemWhoseTurnItIs(this.whoseturn, 0);
+                if (this.whoseturn !== 1) {
+                    return this.tellThemWhoseTurnItIs(this.whoseturn, 1);
                 }
                 this.expect = val;
                 this.whoseturn++;
@@ -45,15 +161,6 @@ class testhouse {
             }
             return this.expect;
         };
-
-        this.testinfo = (name, doc) => {
-            if (this.whoseturn !== 1) {
-                return this.tellThemWhoseTurnItIs(this.whoseturn, 1);
-            }
-            this.name = name;
-            this.doc = doc;
-            this.whoseturn++;
-        }
 
         this.comparator = (cb) => {
             if (this.whoseturn !== 2) {
@@ -74,6 +181,19 @@ class testhouse {
         };
 
         this.actual = (testname, actual) => {
+            try {
+                if (typeof testname !== 'string') {
+                    throw 'YOU MUST PASS THE SAME TEST NAME YOU NAMED THE TEST WITH AS THE FIRST ARGUMENT TO ACTUAL - YOU PASSED ' + testname;
+                }
+                if (!this.testmap[testname]) {
+                    throw 'YOU MUST PASS THE SAME TEST NAME YOU NAMED THE TEST WITH AS THE FIRST ARGUMENT TO ACTUAL - YOU PASSED ' + testname; 
+                }
+            }
+            catch (e) {
+                console.log('EXCEPTION - BAD ARGUMENT TO ACTUAL');
+                console.log(e);
+                process.exit(1);
+            }
             performance.mark(testname+'end');
             const testnameend = testname+'end';
             const perftablename = `${testname} to ${testnameend}`;
@@ -81,6 +201,10 @@ class testhouse {
             const benchmark = performance.getEntriesByName(perftablename)[0].duration;
 
             const result = this.testmap[testname].compare(this.testmap[testname].expect, actual);
+
+            if (this.testmap[testname].err) {
+                result = false;
+            }
 
             if (result) {
                 this.numpass++;
@@ -96,7 +220,7 @@ class testhouse {
                 testname.padEnd(this.testnamewidth, this.testnamepadchar),
                 this.passorfail(result),
                 TIMECOLOR+
-                (benchmark.toString().padEnd(8, '0')+'ms').padStart(13)
+                (benchmark.toString().padEnd(11, '0')+'ms').padStart(13)
             );
 
             if (!result) {
@@ -107,82 +231,60 @@ class testhouse {
                 console.log(this.currentColors(result)+('DESC '+this.testmap[testname].doc.slice(0, 66)+elipsis).padEnd(74, ' '));
                 console.log(('EXPECTED: '+this.testmap[testname].expect+' ACTUAL: '+actual).padEnd(74, ' '));
             }
+
+            if (this.testmap[testname].err) {
+                console.log('Exception in test '+testname+'!');
+                console.log(this.testmap[testname].err);
+            }
             
             this.testmap[testname].hasrun = true;
         }
 
         this.runtests = () => {
-            Object.keys(this.testmap).forEach((test) => {
-                performance.mark(test)
-                this.testmap[test].testfunc();
-            });
-
-            this.stalltillgood(() => {
-                this.finallog();
-            });
-        };
-
-        this.finallog = () => {
-            console.log(
-                this.lastColors()+this.numpass+'/'+(this.numpass+this.numfail),
-                'passed '+TIMECOLOR+' Tests finished '+process.uptime()+'s'+RESETCOLOR);
-        }
-
-        this.addcurrenttest = () => {
-            if (this.testmap[this.name]) {
-                throw 'ERROR - DUPLICATE TEST NAMES! THEY MUST BE UNIQUE!';
+            if (LAZYINIT) {
+                this.tests = Object.keys(this.testmap);
+                this.statictests = this.tests;
             }
-            this.testmap[this.name] = {
-                expect: this.expect,
-                doc: this.doc,
-                compare: this.compare,
-                testfunc: this.testfunc,
-                hasrun: false
-            };
-        }
-
-        this.stalltillgood = (cb) => {
-            const good = Object.keys(this.testmap).every((test) => {
-                return this.testmap[test].hasrun;
-            });
-            if (!good) {
-                setTimeout(this.stalltillgood.bind(this, cb), 5);
+            try {
+                while (this.tests.length) {
+                    const test = this.tests.shift();
+                    performance.mark(test)
+                    this.testmap[test].testfunc();
+                }           
+                stalltillgood(() => {
+                    finallog();
+                });
             }
-            else {
-                cb();
+            catch (e) {
+                const stackframes = e.stack.split('\n');
+                owningloop:
+                for (let i = 0; i < stackframes.length; i++) {
+                    if (stackframes[i].includes('Object.keys.forEach') && stackframes[i].includes('testhouse.js:')) {
+                        const beg = stackframes[--i].lastIndexOf('(');
+                        const end = stackframes[i].indexOf(':');
+                        const pathtoclientcode = stackframes[i].substring(beg+1, end);
+                        const linenumend = stackframes[i].lastIndexOf(':');
+                        const linenumbeg = stackframes[i].lastIndexOf(':', linenumend - 1);
+                        const linenum = stackframes[i].substring(linenumbeg+1, linenumend);
+                        if (LAZYINIT) {
+                            LAZYINIT = false;
+                            fs.readFile(pathtoclientcode, (err, data) => {
+                                if (err) return console.log(err);
+                                resolveException(this.testmap, data, linenum);
+                                break owningloop;
+                            });
+                        }
+                        else {
+                            resolveException(this.testmap, data, linenum);
+                            break owningloop;
+                        }
+                    }
+                }
             }
         }
 
-        this.passorfail = (bool) => {
-            return bool ? 'PASSED' : 'FAILED';
-        }
-
-        this.currentColors = (bool) => {
-            return  bool ? GOODCOLOR : BADCOLOR;
-        }
-
-        this.lastColors = () => {
-            return this.numfail ? BADCOLOR : GOODCOLOR;
-        }
-
-        this.setTestsZeroBased = () => {
-            this.onebased = 0;
-        }
-
-        this.setTestNameWidth = (num) => {
-            this.testnamewidth = num;
-        }
-
-        this.setTestDigitsWidth = (num) => {
-            this.maxtestdigits = num;
-        }
-
-        this.setTestNumberPadString = (char) => {
-            this.testnumpadchar = char;
-        }
-
-        this.setTestNamePadString = (char) => {
-            this.testnamepadchar = char;
+        this.getCmpFuncs = () => {
+            return new cmpfuncs();
         }
     }
 }
