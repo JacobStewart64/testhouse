@@ -6,8 +6,6 @@ Maybe it will grow into big super tester one day!
 
 To do:
 
-finish api once and for all
-
 finish graceful exceptions
 
 finish logs once and for all
