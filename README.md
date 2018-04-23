@@ -1,15 +1,11 @@
-Pretty good if I may say so!
-
-Still needs lots of love.
-
-Maybe it will grow into big super tester one day!
+Does pretty much everything. Has bad logs right now. Going to work on a task runner now. Building a suite of homemade tools.
 
 To do:
 
-finish api once and for all
+finish api
 
-finish graceful exceptions
+handle exception inside async test function
 
-finish logs once and for all
+finish logs
 
-Too good to be true speed? RW 100 files in 0.096s?
+performance enhancements?

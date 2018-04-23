@@ -23,8 +23,8 @@ comparator((expected, actual) => {              //pass your comparator function
     return expected === actual;                 //for use in this test
 });
 
-test(async () => {                                      //pass your test function to test
-    const file = fs.readFileSync('./hello.html');
+test(() => {                                      //pass your test function to test
+    const file = fs.readFileSync('./hello.htm');
     actual('A Hello World Test', file.toString());//make a call to actual in your test code
 });                                               //to pass it your test result
 

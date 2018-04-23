@@ -29,6 +29,8 @@ class testhouse {
         this.doc = undefined;
         this.compare = undefined;
         this.testfunc = undefined;
+        this.exceptionarray = [];
+        this.numexecuted = 0;
 
         this.tellThemWhoseTurnItIs = (whoseturn, outofturn) => {
             throw `ERROR - CALLING FUNCTIONS OUT OF TURN\nYou tried calling ${this.turns[outofturn]} out of turn, it's ${this.turns[whoseturn]}'s turn!`;
@@ -109,23 +111,43 @@ class testhouse {
             }
             
             this.testmap[testname].hasrun = true;
+            this.numexecuted++;
         }
 
         this.runtests = () => {
-            Object.keys(this.testmap).forEach((test) => {
-                performance.mark(test)
-                this.testmap[test].testfunc();
-            });
+            try {
+                if (!this.keys) {
+                    this.keys = Object.keys(this.testmap);
+                }
+                
 
-            this.stalltillgood(() => {
-                this.finallog();
-            });
+               this.keys.forEach((test) => {
+                    if (!this.testmap[test].hasbeenexecuted) {
+                        this.testmap[test].hasbeenexecuted = true;
+                        performance.mark(test);
+                        this.testmap[test].testfunc();
+                    }
+                });
+
+                this.stalltillgood(() => {
+                    this.finallog();
+                }); 
+            }
+            catch (e) {
+                this.exceptionarray.push(e);
+                this.runtests();
+            }
         };
 
         this.finallog = () => {
             console.log(
                 this.lastColors()+this.numpass+'/'+(this.numpass+this.numfail),
                 'passed '+TIMECOLOR+' Tests finished '+process.uptime()+'s'+RESETCOLOR);
+
+            this.exceptionarray.forEach((e) => {
+                console.log('One of your tests threw an exception!');
+                console.log(e);
+            });
         }
 
         this.addcurrenttest = () => {
@@ -142,10 +164,7 @@ class testhouse {
         }
 
         this.stalltillgood = (cb) => {
-            const good = Object.keys(this.testmap).every((test) => {
-                return this.testmap[test].hasrun;
-            });
-            if (!good) {
+            if (this.keys.length !== (this.numexecuted + this.exceptionarray.length)) {
                 setTimeout(this.stalltillgood.bind(this, cb), 5);
             }
             else {
